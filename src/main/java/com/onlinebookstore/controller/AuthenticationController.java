@@ -10,8 +10,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.onlinebookstore.dto.AuthenticationRequest;
 import com.onlinebookstore.dto.RegisterRequest;
+import com.onlinebookstore.exception.AuthenticationServiceException;
 import com.onlinebookstore.service.AuthenticationService;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -35,13 +40,12 @@ public class AuthenticationController {
     public ResponseEntity<String> authenticateUser(@RequestBody AuthenticationRequest request) {
         try {
             String result = authenticationService.authenticate(request);
-            if (result.startsWith("Authentication successful")) {
-                return ResponseEntity.ok(result);
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
-            }
+            return ResponseEntity.ok(result); // Response already contains JSON token
+        } catch (AuthenticationServiceException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred. Please try again later.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred. Please try again later.");
         }
     }
 }

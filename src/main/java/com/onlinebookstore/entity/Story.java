@@ -1,9 +1,14 @@
 package com.onlinebookstore.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.onlinebookstore.baseentities.AuditingWithBaseEntity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,8 +16,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "books")
-public class Book extends AuditingWithBaseEntity {
+@Table(name = "stories")
+public class Story extends AuditingWithBaseEntity {
 
     @Column(nullable = false)
     private String title;
@@ -24,8 +29,13 @@ public class Book extends AuditingWithBaseEntity {
     private String genre;
 
     @Column(nullable = false)
-    private Double price;
+    @Lob
+    private String content;
 
-    @Column(nullable = false)
-    private Integer stock;
+    @ElementCollection
+    private List<String> comments = new ArrayList<>();
+
+    private int likes = 0;
+
+    private boolean isPublished = false;
 }

@@ -10,6 +10,7 @@ import com.onlinebookstore.dto.AuthenticationRequest;
 import com.onlinebookstore.dto.RegisterRequest;
 import com.onlinebookstore.entity.User;
 import com.onlinebookstore.enumerations.UserType;
+import com.onlinebookstore.exception.AuthenticationServiceException;
 import com.onlinebookstore.repository.UserRepository;
 import com.onlinebookstore.security.JwtService;
 
@@ -26,11 +27,13 @@ public class AuthenticationService {
 
     public String register(RegisterRequest request) {
         try {
+            UserType userType = request.getUserType() != null ? request.getUserType() : UserType.USER; // Default to USER if not provided
+
             User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .userType(UserType.ADMIN)
+                .userType(userType)
                 .build();
 
             userRepository.save(user);
@@ -46,11 +49,13 @@ public class AuthenticationService {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
             User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + request.getEmail()));
+                .orElseThrow(() -> new AuthenticationServiceException("User not found with email: " + request.getEmail()));
             String jwtToken = jwtService.generateToken(user);
-            return "Authentication successful: " + jwtToken;
+            return "{\"token\": \"" + jwtToken + "\"}"; // Return JSON response with token
+        } catch (AuthenticationServiceException e) {
+            throw e; // Rethrow custom exception
         } catch (Exception e) {
-            return "Authentication failed: " + e.getMessage();
+            throw new AuthenticationServiceException("Authentication failed: " + e.getMessage(), e);
         }
     }
-    }
+}
