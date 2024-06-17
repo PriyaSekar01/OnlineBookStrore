@@ -12,28 +12,21 @@ import com.onlinebookstore.dto.AuthenticationRequest;
 import com.onlinebookstore.dto.RegisterRequest;
 import com.onlinebookstore.exception.AuthenticationServiceException;
 import com.onlinebookstore.service.AuthenticationService;
-
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Api(value = "Authentication Management System", tags = "Authentication")
+@Tag(name = "Authentication", description = "Authentication Management System")
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
     @PostMapping("/register")
-    @ApiOperation(value = "Register a new user")
+    @Operation(summary = "Register a new user")
     public ResponseEntity<String> registerUser(@RequestBody RegisterRequest request) {
         try {
             String successMessage = authenticationService.register(request);
@@ -44,7 +37,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    @ApiOperation(value = "Authenticate user and generate token")
+    @Operation(summary = "Authenticate user and generate token")
     public ResponseEntity<String> authenticateUser(@RequestBody AuthenticationRequest request) {
         try {
             String result = authenticationService.authenticate(request);
