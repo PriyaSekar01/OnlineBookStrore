@@ -18,31 +18,47 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class  SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     //private final UserDetailsService userDetailsService;
     
+    public SecurityConfiguration(JwtAuthenticationFilter jwtAuthFilter, AuthenticationProvider authenticationProvider) {
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.authenticationProvider = authenticationProvider;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(authorize ->
-                authorize
-                    .requestMatchers("/v2/api-docs", "/v3/api-docs", "/swagger-resources/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                    .anyRequest().authenticated()
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers(
+                    "/v2/api-docs",
+                    "/v3/api-docs",
+                    "/swagger-resources/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/webjars/**"
+                ).permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasAnyRole("ADMIN", "USER")
+                .requestMatchers(HttpMethod.POST, "/api/v1/publishers/**").hasAnyRole("ADMIN", "PUBLISHER")
+                .requestMatchers(HttpMethod.GET, "/api/v1/publishers/{publisherId}/comments").hasAnyRole("ADMIN", "PUBLISHER")
+                .anyRequest().authenticated()
             )
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        
         return http.build();
     }
+    
+}
 //    protected void configure(HttpSecurity http) throws Exception {
 //        http
 //        	.csrf(AbstractHttpConfigurer::disable)
@@ -57,4 +73,3 @@ public class  SecurityConfiguration {
 //    
 
 
-}

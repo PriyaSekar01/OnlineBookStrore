@@ -1,16 +1,23 @@
 package com.onlinebookstore.controller;
 
+import org.springframework.http.HttpHeaders;
+
+
 import org.hibernate.service.spi.ServiceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.onlinebookstore.dto.AuthenticationRequest;
 import com.onlinebookstore.dto.RegisterRequest;
 import com.onlinebookstore.exception.AuthenticationServiceException;
+import com.onlinebookstore.response.Response;
+import com.onlinebookstore.response.ResponseGenerator;
+import com.onlinebookstore.response.TransactionContext;
 import com.onlinebookstore.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,29 +31,30 @@ import lombok.RequiredArgsConstructor;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
+    private final ResponseGenerator responseGenerator;
 
     @PostMapping("/register")
-    @Operation(summary = "Register a new user")
-    public ResponseEntity<String> registerUser(@RequestBody RegisterRequest request) {
+    public ResponseEntity<Response> registerUser(@RequestHeader HttpHeaders headers, @RequestBody RegisterRequest request) {
+        TransactionContext context = responseGenerator.generateTransactionContext(headers);
         try {
             String successMessage = authenticationService.register(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(successMessage);
+            return responseGenerator.successResponse(context, successMessage, HttpStatus.CREATED);
         } catch (ServiceException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+            return responseGenerator.errorResponse(context, e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @PostMapping("/login")
     @Operation(summary = "Authenticate user and generate token")
-    public ResponseEntity<String> authenticateUser(@RequestBody AuthenticationRequest request) {
+    public ResponseEntity<Response> authenticateUser(@RequestHeader HttpHeaders headers, @RequestBody AuthenticationRequest request) {
+        TransactionContext context = responseGenerator.generateTransactionContext(headers);
         try {
             String result = authenticationService.authenticate(request);
-            return ResponseEntity.ok(result); // Response already contains JSON token
+            return responseGenerator.successResponse(context, result, HttpStatus.OK); // Response already contains JSON token
         } catch (AuthenticationServiceException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+            return responseGenerator.errorResponse(context, e.getMessage(), HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An unexpected error occurred. Please try again later.");
+            return responseGenerator.errorResponse(context, "An unexpected error occurred. Please try again later.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
