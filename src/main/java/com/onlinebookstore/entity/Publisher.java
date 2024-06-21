@@ -26,15 +26,9 @@ public class Publisher extends AuditingWithBaseEntity implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	@Column(nullable = false, unique = true)
-    private String name;
+	@Column(name="name")
+	private String name;
 
-    @OneToMany(mappedBy = "publisher", cascade = CascadeType.ALL)
-    private List<Story> stories = new ArrayList<>();
-
-    @OneToMany(mappedBy = "publisher")
-    private List<Comment> comments = new ArrayList<>();
-    
-    // Constructors, getters, setters, and other methods as needed
+	@OneToMany(mappedBy = "publisher")
+	private List<Story> stories;
 }
-

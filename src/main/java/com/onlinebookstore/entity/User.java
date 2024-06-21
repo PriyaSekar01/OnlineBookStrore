@@ -24,7 +24,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-
 @Entity
 @Builder
 @Getter
@@ -50,11 +49,10 @@ public class User extends AuditingWithBaseEntity implements UserDetails, Seriali
     @Enumerated(EnumType.STRING)
     @Column(name = "user_type")
     private UserType userType;
-    
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(userType.name()));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + userType.name()));
     }
 
     @Override

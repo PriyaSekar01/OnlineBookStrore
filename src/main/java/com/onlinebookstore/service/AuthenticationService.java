@@ -1,6 +1,10 @@
 package com.onlinebookstore.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import org.hibernate.service.spi.ServiceException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -58,4 +62,9 @@ public class AuthenticationService {
             throw new AuthenticationServiceException("Authentication failed: " + e.getMessage(), e);
         }
     }
+
+	public ResponseEntity<?> getuser(UUID id) {
+		Optional<User> user = userRepository.findById(id);
+		return ResponseEntity.ok(user);
+	}
 }

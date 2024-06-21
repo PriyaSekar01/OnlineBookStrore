@@ -22,24 +22,17 @@ import lombok.Setter;
 @Table(name = "comments")
 public class Comment extends AuditingWithBaseEntity implements Serializable {
 
- 
 	private static final long serialVersionUID = 1L;
 
+	@Column(name = "text")
+	private String text;
+
 	@ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+	@JoinColumn(name = "story_id")
+	private Story story;
 
-    @ManyToOne
-    @JoinColumn(name = "story_id", nullable = false)
-    private Story story;
+	@ManyToOne
+	@JoinColumn(name = "user_id")
+	private User user;
 
-    @ManyToOne
-    @JoinColumn(name = "publisher_id", nullable = false)
-    private Publisher publisher;
-
-    @Column(columnDefinition = "TEXT")
-    private String content;
-
-    // Constructors, getters, setters, and other methods as needed
 }
-

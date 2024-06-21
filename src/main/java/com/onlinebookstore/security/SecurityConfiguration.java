@@ -12,17 +12,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import lombok.RequiredArgsConstructor;
 
 
 
 @Configuration
 @EnableWebSecurity
-public class  SecurityConfiguration {
+public class SecurityConfiguration {
+
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
-    //private final UserDetailsService userDetailsService;
-    
+
     public SecurityConfiguration(JwtAuthenticationFilter jwtAuthFilter, AuthenticationProvider authenticationProvider) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.authenticationProvider = authenticationProvider;
@@ -43,10 +42,7 @@ public class  SecurityConfiguration {
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/admin/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasAnyRole("ADMIN", "USER")
                 .requestMatchers(HttpMethod.POST, "/api/v1/publishers/**").hasAnyRole("ADMIN", "PUBLISHER")
-                .requestMatchers(HttpMethod.GET, "/api/v1/publishers/{publisherId}/comments").hasAnyRole("ADMIN", "PUBLISHER")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
@@ -57,8 +53,9 @@ public class  SecurityConfiguration {
         
         return http.build();
     }
-    
+
 }
+
 //    protected void configure(HttpSecurity http) throws Exception {
 //        http
 //        	.csrf(AbstractHttpConfigurer::disable)
