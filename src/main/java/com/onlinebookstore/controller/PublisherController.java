@@ -21,6 +21,8 @@ import com.onlinebookstore.entity.Publisher;
 import com.onlinebookstore.entity.Story;
 import com.onlinebookstore.response.Response;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
 import com.onlinebookstore.response.ResponseGenerator;
 import com.onlinebookstore.response.TransactionContext;
 import com.onlinebookstore.service.PublisherService;
@@ -36,9 +38,11 @@ public class PublisherController {
     private final PublisherService publisherService;
     private final ResponseGenerator responseGenerator;
 
-    
     @GetMapping("get/{publisherId}")
-    @Operation(summary = "Get publisher details by ID")
+    @Operation(summary = "Get publisher details by ID", description = "Fetches detailed information about a publisher based on the provided publisher ID.")
+        @ApiResponse(responseCode = "200", description = "Publisher details retrieved successfully")
+        @ApiResponse(responseCode = "404", description = "Publisher not found")
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     public ResponseEntity<Response> getPublisherById(@PathVariable UUID publisherId, @RequestHeader HttpHeaders headers) {
         TransactionContext context = responseGenerator.generateTransactionContext(headers);
         try {
@@ -50,7 +54,10 @@ public class PublisherController {
     }
 
     @GetMapping("/{publisherId}/comments")
-    @Operation(summary = "Get comments for a publisher's stories")
+    @Operation(summary = "Get comments for a publisher's stories", description = "Retrieves all comments associated with the stories published by the given publisher.")
+        @ApiResponse(responseCode = "200", description = "Comments retrieved successfully")
+        @ApiResponse(responseCode = "404", description = "Publisher or comments not found")
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     public ResponseEntity<Response> getCommentsForPublisher(@PathVariable UUID publisherId, @RequestHeader HttpHeaders headers) {
         TransactionContext context = responseGenerator.generateTransactionContext(headers);
         try {
@@ -60,9 +67,12 @@ public class PublisherController {
             return responseGenerator.errorResponse(context, e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    
+
     @PostMapping("/stories/{publisherId}")
-    @Operation(summary = "Add a new story")
+    @Operation(summary = "Add a new story", description = "Adds a new story under the specified publisher and returns the created story details.")
+        @ApiResponse(responseCode = "201", description = "Story added successfully")
+        @ApiResponse(responseCode = "404", description = "Publisher not found")
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     public ResponseEntity<Response> addStory(
         @PathVariable UUID publisherId, 
         @RequestBody StoryRequest storyRequest, 
@@ -70,12 +80,10 @@ public class PublisherController {
     ) {
         TransactionContext context = responseGenerator.generateTransactionContext(headers);
         try {
-            System.out.println("Publisher ID: " + publisherId);
             Story newStory = publisherService.addStory(publisherId, storyRequest);
             return responseGenerator.successResponse(context, newStory, HttpStatus.CREATED);
         } catch (ServiceException e) {
             return responseGenerator.errorResponse(context, e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    
 }
