@@ -1,10 +1,13 @@
 package com.onlinebookstore.security;
 
+import static com.onlinebookstore.util.Constants.ACCESS_TOKEN_VALIDITY_SECONDS;
+
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,60 +24,96 @@ import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
+	 private static final String SECRET_KEY = "03660bc3b1d80451fa15edf510ef9348a588f350029d5ea0d011f600e0e7b593";
+	 public String extractUserName(String token) {
+	        return extractClaim(token, Claims::getSubject);
+	    }
 
-    private static final String SECRET_KEY = "03660bc3b1d80451fa15edf510ef9348a588f350029d5ea0d011f600e0e7b593";  // Ensure a secure, random key
+	    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+	        final Claims claims = extractAllClaims(token);
+	        return claimsResolver.apply(claims);
+	    }
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
+	    private Claims extractAllClaims(String token) {
+	        return Jwts.parserBuilder().setSigningKey(getSigninKey()).build().parseClaimsJws(token).getBody();
+	    }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
+	    private Key getSigninKey() {
+	        byte[] keyBytes = Base64.getDecoder().decode(SECRET_KEY);
+	        return Keys.hmacShaKeyFor(keyBytes);
+	    }
 
-    public String generateToken(User userDetails) {
-        Map<String, Object> claims = new HashMap();
-        claims.put("role", userDetails.getAuthorities().stream()
-                                      .map(GrantedAuthority::getAuthority)
-                                      .collect(Collectors.toList()));
-        return generateToken(claims, userDetails);
-    }
+	    public String generateToken(User userDetails) {
+	        Map<String, Object> claims = new HashMap<>();
+	        claims.put("role", userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+	                .collect(Collectors.joining(",")));
+	        claims.put("id", userDetails.getId().toString());  // Add user id to claims
+	        claims.put("email", userDetails.getEmail());  // Add email to claims
+	        return createToken(claims, userDetails.getUsername());
+	    }
 
+	    public String createToken(Map<String, Object> extraClaims, String username) {
+	        return Jwts.builder()
+	                .setClaims(extraClaims)
+	                .setSubject(username)
+	                .setIssuer("http://ebraintechnologies.com")
+	                .setIssuedAt(new Date(System.currentTimeMillis()))
+	                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_VALIDITY_SECONDS))
+	                .signWith(getSigninKey(), SignatureAlgorithm.HS256)
+	                .compact();
+	    }
 
-    public String generateToken(Map<String, Object> extraClaims, User userDetails) {
-        return Jwts.builder()
-                .setClaims(extraClaims)
-                .setSubject(userDetails.getEmail())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))  // Token valid for 10 hours
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
+	    public boolean isTokenValid(String token, UserDetails userDetails) {
+	        final String userName = extractUserName(token);
+	        return (userName.equals(userDetails.getUsername())) && !isTokenExpired(token);
+	    }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
-    }
+	    private boolean isTokenExpired(String token) {
+	        return extractExpiration(token).before(new Date());
+	    }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
+	    private Date extractExpiration(String token) {
+	        return extractClaim(token, Claims::getExpiration);
+	    }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
+	    public boolean validateToken(String token) {
+	        return !isTokenExpired(token);
+	    }
 
-    private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
+	    public String extractToken(String authHeader) {
+	        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+	            return authHeader.substring(7);
+	        }
+	        return null;
+	    }
 
-    private Key getSigningKey() {
-        byte[] keyBytes = Base64.getDecoder().decode(SECRET_KEY);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-}
+	    public UUID getUserIdFromToken(String token) {
+	        try {
+	            Key key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET_KEY));
+	            Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+	            return UUID.fromString(claims.get("id", String.class));
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	            throw new RuntimeException("Failed to get user ID from token.");
+	        }
+	    }
+
+	    public String getEmailFromToken(String token) {
+	        try {
+	            Key key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET_KEY));
+	            Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+	            return claims.get("email", String.class);
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	            throw new RuntimeException("Failed to get email from token.");
+	        }
+	    }
+
+	    public String getUsernameFromToken(String token) {
+	        return extractClaim(token, Claims::getSubject);
+	    }
+
+	    public String extractRole(String token) {
+	        return extractClaim(token, claims -> claims.get("role", String.class));
+	    }
+	}

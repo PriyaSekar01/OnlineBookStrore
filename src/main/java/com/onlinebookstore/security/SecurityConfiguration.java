@@ -1,6 +1,8 @@
 package com.onlinebookstore.security;
 
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -9,8 +11,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 
 
@@ -19,54 +23,69 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfiguration {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final AuthenticationProvider authenticationProvider;
+	private final AuthenticationProvider authenticationProvider;
+	private final JwtService jwtService;
+	private final UserDetailsService userDetailsService;
 
-    public SecurityConfiguration(JwtAuthenticationFilter jwtAuthFilter, AuthenticationProvider authenticationProvider) {
-        this.jwtAuthFilter = jwtAuthFilter;
+//    @Qualifier("HandlerExceptionResolver")
+	private HandlerExceptionResolver exceptionResolver;
+	private BlacklistService blacklistService;
+
+
+    @Autowired
+    public SecurityConfiguration(AuthenticationProvider authenticationProvider, JwtService jwtService,
+                                 UserDetailsService userDetailsService, @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
         this.authenticationProvider = authenticationProvider;
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+        this.exceptionResolver = exceptionResolver;
+    }
+
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtService, userDetailsService, exceptionResolver,blacklistService);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers(
-                    "/v2/api-docs",
-                    "/v3/api-docs",
-                    "/swagger-resources/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/webjars/**"
-                ).permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/publishers/**").hasAnyRole("ADMIN", "PUBLISHER")
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authenticationProvider)
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        
+                .csrf(AbstractHttpConfigurer :: disable)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("api/auth/**",
+                                "/v2/api-docs",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-resources",
+                                "/swagger-resources/**",
+                                "/swagger-ui/**",
+                                "/configuration/ui",
+                                "/configuration/security",
+                                "/webjars/**",
+                                "/swagger-ui.html").permitAll()
+                        .anyRequest().authenticated())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
+
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+        .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                		.requestMatchers("/api/admin/**").hasRole("ADMIN")
+                		.requestMatchers("/api/employee/**").hasRole("EMPLOYEE")
+                		.requestMatchers("/api/attendance/**").hasAnyRole("ADMIN","EMPLOYEE")
+                		.requestMatchers("/api/notification/**").hasRole("ADMIN")
+                		.requestMatchers("/api/attendance/report**").hasAnyRole("ADMIN","EMPLOYEE")
+                		.requestMatchers("/api/overall**").hasAnyRole("ADMIN")
+                        .anyRequest().authenticated())
+                .formLogin(form -> form
+                        .permitAll())
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/login?logout")
+                        .permitAll());
+    }
 }
-
-//    protected void configure(HttpSecurity http) throws Exception {
-//        http
-//        	.csrf(AbstractHttpConfigurer::disable)
-//            .authorizeHttpRequests(auth ->
-//                auth.requestMatchers("/api/v1/auth/register").hasAnyRole("USER","ADMIN","PUBLISHER") // Allow access to public endpoints
-//                .requestMatchers("/api/v1/auth/login").permitAll() // Require ADMIN role for /admin endpoints
-//                .anyRequest().authenticated()); // Require authentication for any other endpoint
-//            http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-//        http.authenticationProvider(authenticationProvider)
-//        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-//    }
-//    
-
-
